@@ -1074,6 +1074,25 @@ export function GlobalStateProvider({
         );
 
 
+        /*
+         * ---------------------------------------------------
+         * Demo fallback — if both live streams are empty
+         * (NASA cold, key invalid, or no satellite pass yet),
+         * treat it the same as a network error and load
+         * DEMO_HOTSPOTS so the map always shows data.
+         * ---------------------------------------------------
+         */
+
+        if (
+          mergedInitialMapData.length === 0 &&
+          initialClassifiedData.length === 0
+        ) {
+          throw new Error(
+            'No live hotspot data available — loading demo cache'
+          );
+        }
+
+
         setIsDemoMode(
           false
         );
