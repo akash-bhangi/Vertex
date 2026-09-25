@@ -12,6 +12,8 @@ RUN npm ci || npm install
 COPY frontend/ ./
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+ENV NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key
 RUN npm run build
 
 # ==============================================================
