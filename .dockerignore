@@ -1,0 +1,25 @@
+.git
+.gitignore
+.env
+.env.*
+node_modules
+*/node_modules
+__pycache__
+*/__pycache__
+*/**/__pycache__
+.next
+*/.next
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+diffs.txt
+Problem statement.txt
+*.log
+scratch/
+stitch_screens/
+osm_tile.png
+test_tile.jpg

@@ -15,7 +15,7 @@ import {
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
-  'http://localhost:8000';
+  (typeof window !== 'undefined' ? '' : 'http://127.0.0.1:8000');
 
 
 /*
