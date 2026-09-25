@@ -84,14 +84,14 @@ function getFallbackContext(lat: number, lon: number) {
     }
   }
   if (minDist > 1000) {
-      return {
-          nearby_facilities: [],
-          nearest_facility_distance: null,
-          nearest_facility_type: null,
-          facility_count_in_radius: 0,
-          land_use_context: [],
-          osm_source: 'OFFLINE_CATALOG',
-      };
+    return {
+      nearby_facilities: [],
+      nearest_facility_distance: null,
+      nearest_facility_type: null,
+      facility_count_in_radius: 0,
+      land_use_context: [],
+      osm_source: 'OFFLINE_CATALOG',
+    };
   }
   return {
     nearby_facilities: nearest ? [nearest] : [],
@@ -422,14 +422,14 @@ export function RightPanel({ hotspot }: RightPanelProps) {
   const effectiveSatelliteEvidence =
     satelliteEvidence?.image_data_url || satelliteEvidence?.image_base64
       ? {
-          ...satelliteEvidence,
-          image_data_url:
-            satelliteEvidence.image_data_url ||
-            `data:${satelliteEvidence.mime_type || 'image/png'};base64,${satelliteEvidence.image_base64}`,
-          source: satelliteEvidence.source || 'Copernicus Sentinel-2 L2A',
-        }
+        ...satelliteEvidence,
+        image_data_url:
+          satelliteEvidence.image_data_url ||
+          `data:${satelliteEvidence.mime_type || 'image/png'};base64,${satelliteEvidence.image_base64}`,
+        source: satelliteEvidence.source || 'Copernicus Sentinel-2 L2A',
+      }
       : firms
-      ? {
+        ? {
           available: true,
           source: 'Esri High-Resolution World Imagery',
           image_data_url: getEsriSatelliteTileUrl(
@@ -438,7 +438,7 @@ export function RightPanel({ hotspot }: RightPanelProps) {
             15
           ),
         }
-      : null;
+        : null;
 
   const rawContext = displayContext ?? EMPTY_CONTEXT;
   const isResolvedSource =
@@ -450,17 +450,17 @@ export function RightPanel({ hotspot }: RightPanelProps) {
     (rawContext?.nearby_facilities && rawContext.nearby_facilities.length > 0) || isResolvedSource
       ? rawContext
       : firms
-      ? { ...rawContext, ...getFallbackContext(firms.latitude, firms.longitude) }
-      : rawContext;
+        ? { ...rawContext, ...getFallbackContext(firms.latitude, firms.longitude) }
+        : rawContext;
 
   const color =
     CLASSIFICATION_COLORS[
-      classification.classification as ClassificationType
+    classification.classification as ClassificationType
     ] || '#9CA3AF';
 
   const label =
     CLASSIFICATION_LABELS[
-      classification.classification as ClassificationType
+    classification.classification as ClassificationType
     ] || String(classification.classification);
 
   return (
@@ -478,7 +478,7 @@ export function RightPanel({ hotspot }: RightPanelProps) {
           </div>
         </div>
 
-        <div 
+        <div
           className="font-mono text-[11px] text-[#193946] bg-surface-container px-2 py-1 border border-outline-variant flex items-center gap-1.5"
           title={`Active Target Identifier: #${String(hotspot.id)}`}
         >
@@ -500,11 +500,10 @@ export function RightPanel({ hotspot }: RightPanelProps) {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 py-1.5 text-center font-mono-label text-[10px] tracking-widest uppercase transition-all border-b-2 ${
-                isActive
-                  ? `${tab.border} ${tab.text} ${tab.bg} font-bold shadow-[inset_0_-2px_4px_rgba(0,0,0,0.03)]`
-                  : `border-transparent text-[#797983] ${tab.hoverText} ${tab.hoverBg}`
-              }`}
+              className={`flex-1 py-1.5 text-center font-mono-label text-[10px] tracking-widest uppercase transition-all border-b-2 ${isActive
+                ? `${tab.border} ${tab.text} ${tab.bg} font-bold shadow-[inset_0_-2px_4px_rgba(0,0,0,0.03)]`
+                : `border-transparent text-[#797983] ${tab.hoverText} ${tab.hoverBg}`
+                }`}
             >
               {tab.label}
             </button>
@@ -518,7 +517,7 @@ export function RightPanel({ hotspot }: RightPanelProps) {
         {activeTab === 'DOSSIER' && (
           <>
             {classification.classification ===
-            ClassificationType.UNCLASSIFIED ? (
+              ClassificationType.UNCLASSIFIED ? (
               <>
                 <div className="border border-outline-variant p-3 bg-surface-container-high">
                   <div className="flex items-center gap-2 mb-1">
@@ -632,11 +631,10 @@ export function RightPanel({ hotspot }: RightPanelProps) {
                       className="font-mono-label text-[9px] text-secondary hover:text-primary uppercase tracking-widest flex items-center bg-surface-container px-1 py-0.5 rounded cursor-pointer disabled:opacity-50"
                     >
                       <span
-                        className={`material-symbols-outlined text-[12px] ${
-                          isRefreshingContext
-                            ? 'animate-spin'
-                            : ''
-                        }`}
+                        className={`material-symbols-outlined text-[12px] ${isRefreshingContext
+                          ? 'animate-spin'
+                          : ''
+                          }`}
                       >
                         refresh
                       </span>
@@ -646,7 +644,7 @@ export function RightPanel({ hotspot }: RightPanelProps) {
                   <div className="bg-surface border border-outline-variant p-2 font-body-sm text-[12px] space-y-2">
 
                     {context.nearby_facilities?.length >
-                    0 ? (
+                      0 ? (
                       <div>
                         <div className="font-mono-label text-[13px] font-bold text-on-surface uppercase">
                           {
@@ -661,7 +659,7 @@ export function RightPanel({ hotspot }: RightPanelProps) {
                             context
                               .nearby_facilities[0]
                               .type
-                          .replace(/_/g, ' ')}
+                              .replace(/_/g, ' ')}
                         </div>
 
                         <div className="text-secondary">
@@ -823,21 +821,21 @@ export function RightPanel({ hotspot }: RightPanelProps) {
 
                         {context.nearby_facilities?.length >
                           0 && (
-                          <button
-                            onClick={() =>
-                              setShowFacility(
-                                true
-                              )
-                            }
-                            className="font-mono-label text-[9px] text-[#f5751c] hover:underline uppercase tracking-widest flex items-center font-bold"
-                          >
-                            <span className="material-symbols-outlined text-[12px] mr-0.5">
-                              account_tree
-                            </span>
+                            <button
+                              onClick={() =>
+                                setShowFacility(
+                                  true
+                                )
+                              }
+                              className="font-mono-label text-[9px] text-[#f5751c] hover:underline uppercase tracking-widest flex items-center font-bold"
+                            >
+                              <span className="material-symbols-outlined text-[12px] mr-0.5">
+                                account_tree
+                              </span>
 
-                            ASSET TREE
-                          </button>
-                        )}
+                              ASSET TREE
+                            </button>
+                          )}
 
                         <button
                           onClick={refreshContext}
@@ -848,11 +846,10 @@ export function RightPanel({ hotspot }: RightPanelProps) {
                           className="font-mono-label text-[9px] text-[#556575] hover:text-[#f5751c] uppercase tracking-widest flex items-center bg-[#193946]/5 hover:bg-[#193946]/10 px-1.5 py-0.5 border border-[#efbc9d]/60 rounded cursor-pointer disabled:opacity-50"
                         >
                           <span
-                            className={`material-symbols-outlined text-[12px] ${
-                              isRefreshingContext
-                                ? 'animate-spin'
-                                : ''
-                            }`}
+                            className={`material-symbols-outlined text-[12px] ${isRefreshingContext
+                              ? 'animate-spin'
+                              : ''
+                              }`}
                           >
                             refresh
                           </span>
@@ -863,7 +860,7 @@ export function RightPanel({ hotspot }: RightPanelProps) {
                     <div className="bg-surface border border-[#efbc9d]/60 p-2.5 font-body-sm text-[12px] space-y-3">
 
                       {context.nearby_facilities?.length >
-                      0 ? (
+                        0 ? (
                         <div>
                           <div className="font-mono-label text-[13px] font-black text-[#193946] uppercase">
                             {
@@ -878,10 +875,10 @@ export function RightPanel({ hotspot }: RightPanelProps) {
                               context
                                 .nearby_facilities[0]
                                 .type
-                            .replace(
-                              /_/g,
-                              ' '
-                            )}
+                                .replace(
+                                  /_/g,
+                                  ' '
+                                )}
                           </div>
 
                           <div className="text-[#556575] mt-0.5">
@@ -921,11 +918,11 @@ export function RightPanel({ hotspot }: RightPanelProps) {
 
                           {context.osm_source ===
                             'OFFLINE_CATALOG' && (
-                            <div className="text-[10px] text-[#556575] mt-1 italic">
-                              Showing facility context from the VERTEX
-                              offline facility catalog.
-                            </div>
-                          )}
+                              <div className="text-[10px] text-[#556575] mt-1 italic">
+                                Showing facility context from the VERTEX
+                                offline facility catalog.
+                              </div>
+                            )}
 
                           {contextRefreshError && (
                             <div className="text-[10px] text-error mt-1">
@@ -1048,7 +1045,7 @@ export function RightPanel({ hotspot }: RightPanelProps) {
 
                     {classification.evidence &&
                       classification.evidence.length >
-                        0 && (
+                      0 && (
                         <div>
                           <div className="font-mono-label text-[10px] text-secondary mb-1">
                             EVIDENCE:
