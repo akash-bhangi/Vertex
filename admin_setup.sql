@@ -1,221 +1,124 @@
--- ==============================================================
--- VERTEX Complete Authentication & User Management Setup
--- Run this in your Supabase SQL Editor (Dashboard > SQL Editor > New query)
--- ==============================================================
+-- VERTEX admin setup and user-management functions.
+-- Run in the Supabase SQL Editor after username_password_auth.sql.
 
--- 1. Enable pgcrypto extension for password encryption
-CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
+alter table public.app_users
+  add column if not exists role text not null default 'user'
+  check (role in ('user', 'admin'));
 
--- 2. Create the app_users table
-CREATE TABLE IF NOT EXISTS public.app_users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  username TEXT UNIQUE NOT NULL,
-  full_name TEXT,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+-- VERTEX permits exactly one administrator. This removes any extra admin roles.
+delete from public.app_users where role = 'admin' and username <> 'admin';
 
--- Enable Row Level Security
-ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
-
--- Allow users table access through security definer functions only
--- (or read-only for authenticated admins if needed)
-DROP POLICY IF EXISTS "Deny direct anon table access" ON public.app_users;
-CREATE POLICY "Deny direct anon table access" ON public.app_users
-  FOR ALL TO anon USING (false);
-
--- 3. VERTEX permits exactly one administrator. Reset or create it.
-DELETE FROM public.app_users WHERE role = 'admin' AND username <> 'admin';
-
-INSERT INTO public.app_users (username, full_name, password_hash, role)
-VALUES ('admin', 'VERTEX Administrator', extensions.crypt('18117094', extensions.gen_salt('bf')), 'admin')
-ON CONFLICT (username) DO UPDATE
-SET full_name = EXCLUDED.full_name,
-    password_hash = EXCLUDED.password_hash,
+-- Create or reset the only administrator account.
+insert into public.app_users (username, full_name, password_hash, role)
+values ('admin', 'VERTEX Administrator', extensions.crypt('18117094', extensions.gen_salt('bf')), 'admin')
+on conflict (username) do update
+set full_name = excluded.full_name,
+    password_hash = excluded.password_hash,
     role = 'admin';
 
--- ==============================================================
--- 4. User Registration Function (register_user)
--- ==============================================================
-CREATE OR REPLACE FUNCTION public.register_user(
-  p_username TEXT,
-  p_password TEXT,
-  p_full_name TEXT DEFAULT NULL
-)
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, extensions
-AS $$
-DECLARE
-  v_clean_username TEXT;
-  v_user_id UUID;
-BEGIN
-  v_clean_username := lower(trim(p_username));
+-- Include a user's role when they log in.
+create or replace function public.authenticate_user(p_username text, p_password text)
+returns json
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_user app_users%rowtype;
+begin
+  select * into v_user from app_users where username = lower(trim(p_username));
 
-  -- Validation
-  IF length(v_clean_username) < 3 THEN
-    RETURN json_build_object('success', false, 'message', 'Username must be at least 3 characters.');
-  END IF;
+  if not found or v_user.password_hash <> extensions.crypt(p_password, v_user.password_hash) then
+    return json_build_object('success', false, 'message', 'Invalid username or password.');
+  end if;
 
-  IF length(p_password) < 6 THEN
-    RETURN json_build_object('success', false, 'message', 'Password must be at least 6 characters.');
-  END IF;
-
-  -- Disallow registering the reserved admin username
-  IF v_clean_username = 'admin' THEN
-    RETURN json_build_object('success', false, 'message', 'Username "admin" is reserved.');
-  END IF;
-
-  -- Check if user already exists
-  IF EXISTS (SELECT 1 FROM public.app_users WHERE username = v_clean_username) THEN
-    RETURN json_build_object('success', false, 'message', 'Username is already registered. Please log in.');
-  END IF;
-
-  -- Insert new user
-  INSERT INTO public.app_users (username, full_name, password_hash, role)
-  VALUES (
-    v_clean_username,
-    nullif(trim(p_full_name), ''),
-    extensions.crypt(p_password, extensions.gen_salt('bf')),
-    'user'
-  )
-  RETURNING id INTO v_user_id;
-
-  RETURN json_build_object(
-    'success', true,
-    'user_id', v_user_id,
-    'username', v_clean_username,
-    'full_name', p_full_name,
-    'role', 'user'
-  );
-END;
-$$;
-
--- ==============================================================
--- 5. User Authentication / Login Function (authenticate_user)
--- ==============================================================
-CREATE OR REPLACE FUNCTION public.authenticate_user(
-  p_username TEXT,
-  p_password TEXT
-)
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, extensions
-AS $$
-DECLARE
-  v_user public.app_users%rowtype;
-BEGIN
-  SELECT * INTO v_user FROM public.app_users WHERE username = lower(trim(p_username));
-
-  IF NOT FOUND OR v_user.password_hash <> extensions.crypt(p_password, v_user.password_hash) THEN
-    RETURN json_build_object('success', false, 'message', 'Invalid username or password.');
-  END IF;
-
-  RETURN json_build_object(
+  return json_build_object(
     'success', true,
     'user_id', v_user.id,
     'username', v_user.username,
     'full_name', v_user.full_name,
     'role', v_user.role
   );
-END;
+end;
 $$;
 
--- ==============================================================
--- 6. Admin Registration Function (register_admin)
--- ==============================================================
-CREATE OR REPLACE FUNCTION public.register_admin(
-  p_username TEXT,
-  p_password TEXT,
-  p_full_name TEXT DEFAULT NULL
-)
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, extensions
-AS $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM public.app_users WHERE role = 'admin') THEN
-    RETURN json_build_object('success', false, 'message', 'The VERTEX administrator account already exists.');
-  END IF;
+-- An admin registration can occur only if no administrator exists.
+-- With the seeded account above, this returns a safe “already exists” message.
+create or replace function public.register_admin(p_username text, p_password text, p_full_name text default null)
+returns json
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  if exists (select 1 from app_users where role = 'admin') then
+    return json_build_object('success', false, 'message', 'The VERTEX administrator account already exists.');
+  end if;
 
-  IF lower(trim(p_username)) <> 'admin' THEN
-    RETURN json_build_object('success', false, 'message', 'The administrator username must be admin.');
-  END IF;
+  if lower(trim(p_username)) <> 'admin' then
+    return json_build_object('success', false, 'message', 'The administrator username must be admin.');
+  end if;
 
-  IF length(p_password) < 8 THEN
-    RETURN json_build_object('success', false, 'message', 'Password must be at least 8 characters.');
-  END IF;
+  if length(p_password) < 8 then
+    return json_build_object('success', false, 'message', 'Password must be at least 8 characters.');
+  end if;
 
-  INSERT INTO public.app_users (username, full_name, password_hash, role)
-  VALUES ('admin', nullif(trim(p_full_name), ''), extensions.crypt(p_password, extensions.gen_salt('bf')), 'admin');
+  insert into app_users (username, full_name, password_hash, role)
+  values ('admin', nullif(trim(p_full_name), ''), extensions.crypt(p_password, extensions.gen_salt('bf')), 'admin');
 
-  RETURN json_build_object('success', true, 'username', 'admin', 'full_name', p_full_name, 'role', 'admin');
-END;
+  return json_build_object('success', true, 'username', 'admin', 'full_name', p_full_name, 'role', 'admin');
+end;
 $$;
 
--- ==============================================================
--- 7. Admin List Users Function (list_users)
--- ==============================================================
-CREATE OR REPLACE FUNCTION public.list_users(p_admin_password TEXT)
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, extensions
-AS $$
-DECLARE
-  v_admin public.app_users%rowtype;
-BEGIN
-  SELECT * INTO v_admin FROM public.app_users WHERE username = 'admin' AND role = 'admin';
-  IF NOT FOUND OR v_admin.password_hash <> extensions.crypt(p_admin_password, v_admin.password_hash) THEN
-    RETURN json_build_object('success', false, 'message', 'Administrator password is invalid.');
-  END IF;
+-- Verify the admin password before returning account information.
+create or replace function public.list_users(p_admin_password text)
+returns json
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_admin app_users%rowtype;
+begin
+  select * into v_admin from app_users where username = 'admin' and role = 'admin';
+  if not found or v_admin.password_hash <> extensions.crypt(p_admin_password, v_admin.password_hash) then
+    return json_build_object('success', false, 'message', 'Administrator password is invalid.');
+  end if;
 
-  RETURN json_build_object('success', true, 'users', coalesce((
-    SELECT json_agg(json_build_object('id', id, 'username', username, 'full_name', full_name, 'role', role, 'created_at', created_at) ORDER BY created_at DESC)
-    FROM public.app_users
+  return json_build_object('success', true, 'users', coalesce((
+    select json_agg(json_build_object('id', id, 'username', username, 'full_name', full_name, 'role', role, 'created_at', created_at) order by created_at desc)
+    from app_users
   ), '[]'::json));
-END;
+end;
 $$;
 
--- ==============================================================
--- 8. Admin Delete User Function (delete_user)
--- ==============================================================
-CREATE OR REPLACE FUNCTION public.delete_user(p_user_id UUID, p_admin_password TEXT)
-RETURNS JSON
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, extensions
-AS $$
-DECLARE
-  v_admin public.app_users%rowtype;
-BEGIN
-  SELECT * INTO v_admin FROM public.app_users WHERE username = 'admin' AND role = 'admin';
-  IF NOT FOUND OR v_admin.password_hash <> extensions.crypt(p_admin_password, v_admin.password_hash) THEN
-    RETURN json_build_object('success', false, 'message', 'Administrator password is invalid.');
-  END IF;
+-- Administrators may delete regular users, never the protected admin account.
+create or replace function public.delete_user(p_user_id uuid, p_admin_password text)
+returns json
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_admin app_users%rowtype;
+begin
+  select * into v_admin from app_users where username = 'admin' and role = 'admin';
+  if not found or v_admin.password_hash <> extensions.crypt(p_admin_password, v_admin.password_hash) then
+    return json_build_object('success', false, 'message', 'Administrator password is invalid.');
+  end if;
 
-  DELETE FROM public.app_users WHERE id = p_user_id AND role = 'user';
-  IF NOT FOUND THEN
-    RETURN json_build_object('success', false, 'message', 'User was not found or cannot be deleted.');
-  END IF;
+  delete from app_users where id = p_user_id and role = 'user';
+  if not found then
+    return json_build_object('success', false, 'message', 'User was not found or cannot be deleted.');
+  end if;
 
-  RETURN json_build_object('success', true, 'message', 'User deleted.');
-END;
+  return json_build_object('success', true, 'message', 'User deleted.');
+end;
 $$;
 
--- ==============================================================
--- 9. Grant RPC Execution Permissions to anon & authenticated
--- ==============================================================
-REVOKE ALL ON FUNCTION public.register_admin(TEXT, TEXT, TEXT) FROM public;
-REVOKE ALL ON FUNCTION public.list_users(TEXT) FROM public;
-REVOKE ALL ON FUNCTION public.delete_user(UUID, TEXT) FROM public;
-
-GRANT EXECUTE ON FUNCTION public.register_user(TEXT, TEXT, TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.authenticate_user(TEXT, TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.register_admin(TEXT, TEXT, TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.list_users(TEXT) TO anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.delete_user(UUID, TEXT) TO anon, authenticated;
+revoke all on function public.register_admin(text, text, text) from public;
+revoke all on function public.list_users(text) from public;
+revoke all on function public.delete_user(uuid, text) from public;
+grant execute on function public.register_admin(text, text, text) to anon;
+grant execute on function public.list_users(text) to anon;
+grant execute on function public.delete_user(uuid, text) to anon;
