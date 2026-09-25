@@ -60,25 +60,49 @@ function AuthPanelContent({ mode: initialMode }: { mode: AuthMode }) {
     setLoading(true);
 
     try {
-      const activeUsername = username.trim();
+      const activeUsername = username.trim().toLowerCase();
+      if (activeUsername.length < 3) {
+        setError('Username must be at least 3 characters.');
+        setLoading(false);
+        return;
+      }
+      if (password.length < 6) {
+        setError('Password must be at least 6 characters.');
+        setLoading(false);
+        return;
+      }
+
       const rpcName = isSignup ? 'register_user' : 'authenticate_user';
       const rpcParams = isSignup
-        ? { p_username: activeUsername, p_password: password, p_full_name: fullName }
+        ? { p_username: activeUsername, p_password: password, p_full_name: fullName.trim() || null }
         : { p_username: activeUsername, p_password: password };
 
       const { data, error: rpcError } = await supabase.rpc(rpcName, rpcParams);
 
-      if (rpcError) throw rpcError;
+      if (rpcError) {
+        const errMsg = rpcError.message || '';
+        if (errMsg.includes('schema cache') || rpcError.code === 'PGRST202' || errMsg.includes('Could not find')) {
+          setError('Supabase auth function missing: please run admin_setup.sql in your Supabase SQL Editor.');
+          return;
+        }
+        throw rpcError;
+      }
+
       const result = data as AuthResult | null;
       if (!result?.success) {
-        setError(result?.message || 'Invalid username or password. Please verify your credentials.');
+        setError(result?.message || (isSignup ? 'Registration failed.' : 'Invalid credentials.'));
         return;
       }
 
       persistUser(result);
       router.push('/');
     } catch (requestError: any) {
-      setError(requestError?.message || 'Unable to reach the secure access service.');
+      const msg = requestError?.message || '';
+      if (msg.includes('fetch') || msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setError('Unable to reach Supabase. Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are configured.');
+      } else {
+        setError(msg || 'Unable to reach the secure access service.');
+      }
     } finally {
       setLoading(false);
     }
