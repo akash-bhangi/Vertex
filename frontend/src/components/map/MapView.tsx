@@ -153,12 +153,17 @@ export function MapView({
   const onClick = useCallback((event: MapLayerMouseEvent) => {
     const feature = event.features?.find((item) => item?.layer?.id === 'unclustered-point');
     if (!feature) {
-      onSelectHotspot?.(null);
+      // Keep active hotspot selected when clicking or panning on the map background.
+      // Deselection occurs only when clicking the popup's X close button.
       return;
     }
     const clickedId = String(feature.properties?.id ?? '');
     if (!clickedId) return;
-    const selected = visibleHotspots.find((hotspot) => String(hotspot.id) === clickedId);
+    const selected = visibleHotspots.find(
+      (hotspot) =>
+        String(hotspot.id) === clickedId ||
+        String(hotspot.id).replace(/^vtx-/i, '') === clickedId.replace(/^vtx-/i, '')
+    );
     if (selected) onSelectHotspot?.(selected);
   }, [visibleHotspots, onSelectHotspot]);
 

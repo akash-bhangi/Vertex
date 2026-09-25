@@ -460,16 +460,22 @@ async def classify_and_store(country: str = 'IND', days: int = 1) -> List[Classi
             # Persist each observation independently so one malformed row or schema
             # mismatch cannot discard the remainder of the live FIRMS batch.
             for idx, row in enumerate(insert_payload):
+                hs = new_hotspots_to_insert[idx]
                 try:
                     res = supabase_service.table("hotspots").insert(row).execute()
                     if res.data:
-                        hs = new_hotspots_to_insert[idx]
                         setattr(hs, '_db_id', res.data[0]["id"])
-                        unclassified_candidates.append(hs)
+                    else:
+                        setattr(hs, '_db_id', f"firms-{idx}")
                 except Exception as row_error:
-                    logger.error(f"Skipping hotspot insert {idx}: {row_error}")
+                    logger.warning(f"Could not persist hotspot {idx} to Supabase: {row_error}")
+                    setattr(hs, '_db_id', f"firms-{idx}")
+                unclassified_candidates.append(hs)
         except Exception as e:
             logger.error(f"Bulk insert of new hotspots failed: {e}")
+            for idx, hs in enumerate(new_hotspots_to_insert):
+                setattr(hs, '_db_id', f"firms-{idx}")
+                unclassified_candidates.append(hs)
             
     # 3. Priority Selection
     unclassified_candidates.sort(key=lambda x: x.frp or 0.0, reverse=True)
@@ -482,10 +488,17 @@ async def classify_and_store(country: str = 'IND', days: int = 1) -> List[Classi
     # 4. Classify ONLY the top priority ones
     classified_subset = await classify_hotspots(selected_for_ai)
     
+    # Update module-level cache in hotspots router so API endpoints serve identified anomalies immediately
+    try:
+        import routers.hotspots as rh
+        rh.latest_results = classified_subset
+    except Exception as cache_err:
+        logger.warning(f"Could not update latest_results in hotspots router: {cache_err}")
+    
     for c_hotspot in classified_subset:
         hs = c_hotspot.hotspot
         db_id = getattr(hs, '_db_id', None)
-        if db_id:
+        if db_id and not str(db_id).startswith("firms-"):
             try:
                 cls = c_hotspot.classification
                 osm = c_hotspot.osm_context

@@ -67,6 +67,11 @@ async def startup_event():
     # Start Scheduler
     start_scheduler()
 
+    # Pre-warm FIRMS observations and AI classification in background immediately on startup
+    import asyncio
+    from services.classifier import classify_and_store
+    asyncio.create_task(classify_and_store(country="IND", days=1))
+
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Shutting down VERTEX API...")

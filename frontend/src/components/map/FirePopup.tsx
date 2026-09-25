@@ -10,12 +10,12 @@ export function FirePopup({
 }: {
   hotspot: ClassifiedHotspot;
 }) {
-  const c = hotspot.classification;
-  const f = hotspot.hotspot;
-  const ctx = hotspot.context;
+  const c = hotspot?.classification || ({} as any);
+  const f = hotspot?.hotspot || ({} as any);
+  const ctx = hotspot?.context || (hotspot as any)?.osm_context || {};
 
   const type =
-    c.classification as ClassificationType;
+    (c?.classification || '') as ClassificationType;
 
   const color =
     CLASSIFICATION_COLORS[type] ||
@@ -40,10 +40,7 @@ export function FirePopup({
             </span>
 
             <span className="font-mono-data-sm text-[10px] bg-surface-container-highest text-on-surface px-2 py-0.5 rounded-none border border-outline-variant">
-              {(c.confidence_score * 100).toFixed(
-                1
-              )}
-              % Confidence
+              {((Number(c?.confidence_score) || 0) * 100).toFixed(1)}% Confidence
             </span>
           </div>
         </div>
@@ -97,7 +94,7 @@ export function FirePopup({
               </span>
 
               <span className="font-mono-data-md text-primary">
-                {f.frp.toFixed(1)} MW
+                {(Number(f?.frp) || 0).toFixed(1)} MW
               </span>
             </div>
 

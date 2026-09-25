@@ -27,6 +27,34 @@ async def get_analytics_summary(request: Request):
             start += page_size
             
         if not all_data:
+            import routers.hotspots as rh
+            if rh.latest_results:
+                counts = {}
+                risks = {}
+                frps = []
+                for item in rh.latest_results:
+                    cls = item.classification
+                    cls_val = cls.classification.value if hasattr(cls.classification, "value") else str(cls.classification)
+                    risk_val = cls.risk_level or "LOW"
+                    counts[cls_val] = counts.get(cls_val, 0) + 1
+                    risks[risk_val] = risks.get(risk_val, 0) + 1
+                    if item.hotspot.frp is not None:
+                        frps.append(float(item.hotspot.frp))
+                
+                total = len(rh.latest_results)
+                return {
+                    "total_hotspots": total,
+                    "total_firms_observations": total,
+                    "ai_classified": total,
+                    "ai_pending": 0,
+                    "classification_counts": counts,
+                    "risk_level_counts": risks,
+                    "frp_statistics": {
+                        "min": round(min(frps), 2) if frps else 0,
+                        "max": round(max(frps), 2) if frps else 0,
+                        "avg": round(sum(frps) / len(frps), 2) if frps else 0
+                    }
+                }
             return {
                 "total_hotspots": 0,
                 "total_firms_observations": 0,

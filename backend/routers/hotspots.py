@@ -38,8 +38,74 @@ async def get_classified_hotspots(
             query = query.lte("frp", max_frp)
             
         # Execute query
-        res = query.execute()
-        records = res.data or []
+        try:
+            res = query.execute()
+            records = res.data or []
+        except Exception as q_err:
+            logger.warning(f"Database query failed: {q_err}")
+            records = []
+
+        # If Supabase has no records, serve identified anomalies from in-memory cache or on-demand classification
+        if not records:
+            if not latest_results:
+                logger.info("Empty database/cold start: Triggering on-demand classification from live FIRMS observations")
+                try:
+                    await classify_and_store(country=country, days=days)
+                except Exception as c_err:
+                    logger.warning(f"On-demand classification failed: {c_err}")
+
+            if latest_results:
+                features = []
+                for item in latest_results:
+                    h = item.hotspot
+                    cls = item.classification
+                    osm = item.osm_context
+                    cls_val = cls.classification.value if hasattr(cls.classification, "value") else str(cls.classification)
+                    
+                    if classification and cls_val != classification:
+                        continue
+                    if risk_level and cls.risk_level != risk_level:
+                        continue
+                    if min_frp is not None and (h.frp or 0) < min_frp:
+                        continue
+                    if max_frp is not None and (h.frp or 0) > max_frp:
+                        continue
+
+                    features.append({
+                        "type": "Feature",
+                        "id": getattr(h, "_db_id", f"firms-{h.latitude}-{h.longitude}"),
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": [h.longitude, h.latitude]
+                        },
+                        "properties": {
+                            "hotspot": h.dict(),
+                            "classification": {
+                                "classification": cls_val,
+                                "confidence_score": cls.confidence_score,
+                                "explanation": cls.explanation,
+                                "evidence": cls.evidence,
+                                "risk_score": cls.risk_score,
+                                "risk_level": cls.risk_level,
+                                "source_data": cls.source_data
+                            },
+                            "osm_context": {
+                                "nearby_facilities": osm.nearby_facilities,
+                                "nearest_facility_distance": osm.nearest_facility_distance,
+                                "nearest_facility_type": osm.nearest_facility_type,
+                                "land_use_context": osm.land_use_context,
+                                "water_context": osm.water_context,
+                                "near_water": osm.near_water,
+                                "osm_source": osm.osm_source.value if hasattr(osm.osm_source, "value") else str(osm.osm_source)
+                            }
+                        }
+                    })
+                    if len(features) >= limit:
+                        break
+                return {
+                    "type": "FeatureCollection",
+                    "features": features
+                }
 
         # Find the latest available acquisition date among records.
         # If new observations have arrived, filter to the active window (latest date).

@@ -38,6 +38,11 @@ def point_in_india(lat: float, lon: float) -> bool:
 
 _point_in_india = point_in_india
 
+import time
+
+_FIRMS_CACHE = {}
+_CACHE_TTL_SECONDS = 300  # 5 minutes
+
 async def fetch_realtime_hotspots(
     country: str = 'IND',
     days: int = 1,
@@ -51,8 +56,22 @@ async def fetch_realtime_hotspots(
     if bbox is None:
         bbox = INDIA_BBOX
 
+    cache_key = f"{country}_{days}_{source}_{bbox}"
+    now = time.time()
+    if cache_key in _FIRMS_CACHE:
+        cached_time, cached_data = _FIRMS_CACHE[cache_key]
+        if now - cached_time < _CACHE_TTL_SECONDS and cached_data:
+            logger.info(f"Serving {len(cached_data)} FIRMS hotspots from cache ({int(now - cached_time)}s old)")
+            return cached_data
+
     url = f"https://firms.modaps.eosdis.nasa.gov/api/area/csv/{settings.FIRMS_MAP_KEY}/{source}/{bbox}/{days}"
     hotspots = await _fetch_and_parse(url)
+    
+    # Fallback to country API if area query returns empty or times out
+    if not hotspots and country:
+        country_url = f"https://firms.modaps.eosdis.nasa.gov/api/country/csv/{settings.FIRMS_MAP_KEY}/{source}/{country}/{days}"
+        logger.info(f"Area query returned 0 hotspots, trying country API: {country_url}")
+        hotspots = await _fetch_and_parse(country_url)
     
     before = len(hotspots)
     hotspots = [h for h in hotspots if point_in_india(h.latitude, h.longitude)]
@@ -60,6 +79,8 @@ async def fetch_realtime_hotspots(
         
     # Sort by FRP descending so clients can easily slice highest priority if needed
     hotspots.sort(key=lambda h: h.frp or 0.0, reverse=True)
+    if hotspots:
+        _FIRMS_CACHE[cache_key] = (now, hotspots)
     return hotspots
 
 async def fetch_area_hotspots(
