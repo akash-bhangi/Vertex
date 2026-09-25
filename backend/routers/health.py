@@ -5,6 +5,7 @@ from db.supabase_client import supabase_service
 
 router = APIRouter(prefix="/health", tags=["Health"])
 
+@router.get("")
 @router.get("/")
 async def health_check():
     db_status = "OPERATIONAL"

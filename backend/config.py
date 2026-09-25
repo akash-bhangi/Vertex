@@ -21,7 +21,7 @@ class Settings(BaseSettings):
 
     # App Config
     APP_ENV: str = "development"
-    CORS_ORIGINS: str = "http://localhost:3000"
+    CORS_ORIGINS: str = "*"
     BACKEND_PORT: int = 8000
     AI_CLASSIFICATION_LIMIT: int = 50
     GEMINI_MODEL: str = "gemini-3.5-flash-lite"
