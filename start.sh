@@ -11,8 +11,15 @@ cd /app/backend
 python -m uvicorn main:app --host 127.0.0.1 --port 8000 &
 BACKEND_PID=$!
 
-# Wait briefly for backend process to initialize
-sleep 2
+# Wait for FastAPI backend to be fully ready before starting Next.js
+echo "Waiting for FastAPI backend to become ready..."
+for i in $(seq 1 30); do
+    if curl -s http://127.0.0.1:8000/api/v1/health >/dev/null 2>&1; then
+        echo "FastAPI backend is ready on 127.0.0.1:8000 (attempt $i)."
+        break
+    fi
+    sleep 1
+done
 
 # 2. Start Next.js frontend on public port (provided by Render via $PORT)
 TARGET_PORT="${PORT:-10000}"

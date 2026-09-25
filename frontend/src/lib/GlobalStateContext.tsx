@@ -771,16 +771,14 @@ export function GlobalStateProvider({
 
 
       if (!response.ok) {
-
-        throw new Error(
+        console.warn(
           `Failed to fetch current FIRMS observations (${response.status})`
         );
+        return [];
       }
-
 
       const geojson =
         await response.json();
-
 
       if (
         geojson?.type !==
@@ -789,10 +787,7 @@ export function GlobalStateProvider({
           geojson.features
         )
       ) {
-
-        throw new Error(
-          'Invalid FIRMS GeoJSON response'
-        );
+        return [];
       }
 
 

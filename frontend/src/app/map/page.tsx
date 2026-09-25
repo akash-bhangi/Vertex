@@ -396,64 +396,6 @@ function MapWorkspace() {
                 Initializing Geospatial Telemetry...
               </span>
             </div>
-          ) : error ? (
-            /* =============================================
-               ERROR
-               ============================================= */
-
-            <div
-              className="
-                w-full
-                h-full
-                flex
-                items-center
-                justify-center
-                bg-surface-dim
-              "
-            >
-              <div
-                className="
-                  bg-error-container
-                  border
-                  border-error
-                  p-6
-                  max-w-md
-                  text-center
-                  text-on-error-container
-                "
-              >
-                <span
-                  className="
-                    material-symbols-outlined
-                    text-4xl
-                    mb-2
-                    text-error
-                  "
-                >
-                  warning
-                </span>
-
-                <div
-                  className="
-                    font-headline-sm
-                    uppercase
-                    tracking-widest
-                    mb-2
-                  "
-                >
-                  SYSTEM ERROR
-                </div>
-
-                <div
-                  className="
-                    font-mono
-                    text-xs
-                  "
-                >
-                  {error}
-                </div>
-              </div>
-            </div>
           ) : (
             /* =============================================
                MAP
@@ -463,8 +405,15 @@ function MapWorkspace() {
               className="
                 w-full
                 h-full
+                relative
               "
             >
+              {error && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 bg-black/80 border border-amber-500/60 px-4 py-2 rounded-lg backdrop-blur-md shadow-2xl flex items-center gap-2 text-amber-200 text-xs">
+                  <span className="material-symbols-outlined text-sm text-amber-400">info</span>
+                  <span>{error}</span>
+                </div>
+              )}
               <MapView
                 /*
                  * Single authoritative map dataset.

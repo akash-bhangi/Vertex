@@ -22,6 +22,10 @@ def to_geojson(hotspots: List[FIRMSHotspot]) -> Dict[str, Any]:
         "features": features
     }
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 @router.get("/realtime")
 @limiter.limit("60/minute")
 async def get_realtime(
@@ -30,8 +34,12 @@ async def get_realtime(
     days: int = Query(1, description="Number of days"),
     source: str = Query("VIIRS_SNPP_NRT", description="FIRMS Source")
 ):
-    hotspots = await fetch_realtime_hotspots(country, days, source)
-    return to_geojson(hotspots)
+    try:
+        hotspots = await fetch_realtime_hotspots(country, days, source)
+        return to_geojson(hotspots)
+    except Exception as e:
+        logger.error(f"Error fetching realtime FIRMS hotspots: {e}")
+        return to_geojson([])
 
 @router.get("/area")
 @limiter.limit("60/minute")
@@ -41,5 +49,9 @@ async def get_area(
     days: int = Query(1, description="Number of days"),
     source: str = Query("VIIRS_SNPP_NRT", description="FIRMS Source")
 ):
-    hotspots = await fetch_area_hotspots(bbox, days, source)
-    return to_geojson(hotspots)
+    try:
+        hotspots = await fetch_area_hotspots(bbox, days, source)
+        return to_geojson(hotspots)
+    except Exception as e:
+        logger.error(f"Error fetching area FIRMS hotspots: {e}")
+        return to_geojson([])

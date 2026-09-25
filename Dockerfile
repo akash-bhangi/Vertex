@@ -11,9 +11,10 @@ RUN npm ci || npm install
 # Copy frontend source code and build production assets
 COPY frontend/ ./
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=production
-ENV NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
-ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key
+ARG NEXT_PUBLIC_SUPABASE_URL=https://heezkejugtehennmiugd.supabase.co
+ARG NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhlZXprZWp1Z3RlaGVubm1pdWdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwNjgyMTYsImV4cCI6MjEwMzY0NDIxNn0.Ft0oe-ked_Eiba9LPOmWbc1LHvRgq9DnD27q9FPj6L8
+ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY
 RUN npm run build
 
 # ==============================================================

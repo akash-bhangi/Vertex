@@ -76,8 +76,8 @@ export function MapView({
       const riskScore = Number(hotspot?.classification?.risk_score ?? 0);
       const isHighRisk = riskLevel === 'HIGH' || riskLevel === 'CRITICAL' || riskScore >= 70;
       const isPriority = !isPending || isHighRisk;
-      const longitude = Number(hotspot?.hotspot?.longitude);
-      const latitude = Number(hotspot?.hotspot?.latitude);
+      const longitude = Number(hotspot?.hotspot?.longitude ?? (hotspot as any)?.longitude);
+      const latitude = Number(hotspot?.hotspot?.latitude ?? (hotspot as any)?.latitude);
       if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return null;
       const id = String(hotspot.id);
       const isSelected = Boolean(
@@ -127,8 +127,8 @@ export function MapView({
     if (!visibleHotspots.length) return null;
     let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
     for (const hotspot of visibleHotspots) {
-      const lon = Number(hotspot?.hotspot?.longitude);
-      const lat = Number(hotspot?.hotspot?.latitude);
+      const lon = Number(hotspot?.hotspot?.longitude ?? (hotspot as any)?.longitude);
+      const lat = Number(hotspot?.hotspot?.latitude ?? (hotspot as any)?.latitude);
       if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;
       minLon = Math.min(minLon, lon); minLat = Math.min(minLat, lat);
       maxLon = Math.max(maxLon, lon); maxLat = Math.max(maxLat, lat);

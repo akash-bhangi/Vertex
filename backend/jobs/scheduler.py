@@ -17,8 +17,10 @@ async def scheduled_classify_job():
         logger.error(f"Error in scheduled classification job: {e}")
 
 def setup_scheduler():
-    scheduler.add_job(scheduled_classify_job, "interval", minutes=30, id="classify_job", replace_existing=True, coalesce=True, max_instances=1, next_run_time=datetime.now())
-    logger.info("Scheduler configured.")
+    from datetime import timedelta
+    first_run = datetime.now() + timedelta(minutes=2)
+    scheduler.add_job(scheduled_classify_job, "interval", minutes=30, id="classify_job", replace_existing=True, coalesce=True, max_instances=1, next_run_time=first_run)
+    logger.info("Scheduler configured (first run in 2 minutes).")
 
 def start_scheduler():
     setup_scheduler()
