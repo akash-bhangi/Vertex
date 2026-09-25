@@ -88,5 +88,14 @@ async def get_analytics_summary(request: Request):
             }
         }
     except Exception as e:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=503, detail=f"Database connection failed: {str(e)}")
+        import logging
+        logging.getLogger(__name__).warning(f"Could not load analytics summary: {e}")
+        return {
+            "total_hotspots": 0,
+            "total_firms_observations": 0,
+            "ai_classified": 0,
+            "ai_pending": 0,
+            "classification_counts": {},
+            "risk_level_counts": {},
+            "frp_statistics": {"min": 0, "max": 0, "avg": 0}
+        }

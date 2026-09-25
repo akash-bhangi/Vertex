@@ -47,7 +47,7 @@ async def startup_event():
     
     assert settings.FIRMS_MAP_KEY, "FIRMS_MAP_KEY is missing!"
     assert settings.SUPABASE_URL, "SUPABASE_URL is missing!"
-    assert settings.SUPABASE_SERVICE_KEY, "SUPABASE_SERVICE_KEY is missing!"
+    assert settings.SUPABASE_ANON_KEY, "SUPABASE_ANON_KEY is missing!"
     assert settings.GEMINI_API_KEY, "GEMINI_API_KEY is missing!"
     
     logger.info(f"EARTHDATA credentials present: {bool(settings.EARTHDATA_USER)}")

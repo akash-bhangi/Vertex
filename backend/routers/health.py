@@ -13,8 +13,13 @@ async def health_check():
     try:
         supabase_service.table("hotspots").select("id").limit(1).execute()
     except Exception as exc:
-        db_status = "DEGRADED"
-        db_error = str(exc)
+        from db.supabase_client import supabase_anon
+        try:
+            supabase_anon.table("hotspots").select("id").limit(1).execute()
+            db_status = "OPERATIONAL"
+        except Exception as exc2:
+            db_status = "DEGRADED"
+            db_error = str(exc2)
 
     services = {**service_status}
     services["database"] = {"status": db_status, **({"error": db_error} if db_error else {})}

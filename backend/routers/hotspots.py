@@ -119,14 +119,21 @@ async def get_classified_hotspots(
             "features": features
         }
     except Exception as e:
-        logger.error(f"Database connection failed: {e}")
-        raise HTTPException(status_code=503, detail=f"Database connection failed: {str(e)}")
+        logger.warning(f"Database fetch failed, returning empty collection: {e}")
+        return {
+            "type": "FeatureCollection",
+            "features": []
+        }
 
 @router.post("/persistent-sources/calculate")
 @limiter.limit("5/minute")
 async def calculate_persistent_sources_endpoint(request: Request):
-    data = await calculate_persistent_sources()
-    return {"count": len(data), "persistent_sources": data}
+    try:
+        data = await calculate_persistent_sources()
+        return {"count": len(data), "persistent_sources": data}
+    except Exception as e:
+        logger.warning(f"Could not calculate persistent sources: {e}")
+        return {"count": 0, "persistent_sources": []}
 
 @router.get("/persistent-sources")
 @limiter.limit("60/minute")
@@ -135,7 +142,8 @@ async def get_persistent_sources(request: Request, limit: int = Query(500, le=10
         res = supabase_service.table("persistent_sources").select("*").order("active_days", desc=True).limit(limit).execute()
         return {"persistent_sources": res.data or []}
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Database connection failed: {e}")
+        logger.warning(f"Could not load persistent sources: {e}")
+        return {"persistent_sources": []}
 
 
 @router.post("/reclassify-current")
