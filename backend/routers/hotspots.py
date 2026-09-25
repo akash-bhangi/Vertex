@@ -15,10 +15,30 @@ router = APIRouter(prefix="/hotspots", tags=["Hotspots"])
 # Module-level cache for latest results
 latest_results = []
 
+# Background classification guard — only one task at a time
+_classification_in_progress = False
+
+
+async def _run_classification_background(country: str, days: int):
+    """Runs classify_and_store in the background without blocking any HTTP request."""
+    global _classification_in_progress
+    if _classification_in_progress:
+        return
+    _classification_in_progress = True
+    try:
+        await classify_and_store(country=country, days=days)
+        logger.info("Background classification complete.")
+    except Exception as c_err:
+        logger.warning(f"Background classification failed: {c_err}")
+    finally:
+        _classification_in_progress = False
+
+
 @router.get("/classified")
 @limiter.limit("60/minute")
 async def get_classified_hotspots(
     request: Request,
+    background_tasks: BackgroundTasks,
     country: str = Query("IND"),
     days: int = Query(1),
     classification: Optional[str] = None,
@@ -31,12 +51,12 @@ async def get_classified_hotspots(
     try:
         # Build query for Supabase
         query = supabase_service.table("hotspots").select("*, classifications(*)").order("created_at", desc=True)
-        
+
         if min_frp is not None:
             query = query.gte("frp", min_frp)
         if max_frp is not None:
             query = query.lte("frp", max_frp)
-            
+
         # Execute query
         try:
             res = query.execute()
@@ -45,14 +65,12 @@ async def get_classified_hotspots(
             logger.warning(f"Database query failed: {q_err}")
             records = []
 
-        # If Supabase has no records, serve identified anomalies from in-memory cache or on-demand classification
+        # If Supabase has no records, serve in-memory cache or trigger background classification
         if not records:
             if not latest_results:
-                logger.info("Empty database/cold start: Triggering on-demand classification from live FIRMS observations")
-                try:
-                    await classify_and_store(country=country, days=days)
-                except Exception as c_err:
-                    logger.warning(f"On-demand classification failed: {c_err}")
+                # Never block the HTTP request waiting for classification — fire and forget
+                logger.info("Cold start: triggering background classification. Returning empty for now.")
+                background_tasks.add_task(_run_classification_background, country, days)
 
             if latest_results:
                 features = []

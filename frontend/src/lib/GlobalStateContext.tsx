@@ -1376,7 +1376,21 @@ export function GlobalStateProvider({
 
   useEffect(() => {
 
-    refreshData();
+    // On cold start the backend returns empty immediately and fires classification
+    // in the background. We auto-retry once after 40 s so data appears automatically.
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+
+    refreshData().then(() => {
+      // If hotspots are still empty after the first load, schedule a retry
+      // (captured via closure — state won't be updated yet, so we just always retry once)
+      retryTimer = setTimeout(() => {
+        refreshData().catch(() => {});
+      }, 40_000);
+    }).catch(() => {});
+
+    return () => {
+      if (retryTimer) clearTimeout(retryTimer);
+    };
 
   }, []);
 
