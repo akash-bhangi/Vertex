@@ -67,10 +67,28 @@ async def startup_event():
     # Start Scheduler
     start_scheduler()
 
-    # Pre-warm FIRMS observations and AI classification in background immediately on startup
+    # Validate FIRMS API key and pre-warm cache on startup
     import asyncio
+    from services.firms_service import fetch_raw_debug
     from services.classifier import classify_and_store
-    asyncio.create_task(classify_and_store(country="IND", days=1))
+
+    async def _startup_pipeline():
+        # Step 1: Test FIRMS key with a quick debug probe
+        logger.info("=== FIRMS API Key Validation ===")
+        for src in ["VIIRS_SNPP_NRT", "VIIRS_NOAA20_NRT", "MODIS_NRT"]:
+            debug_info = await fetch_raw_debug(source=src, days=1)
+            logger.info(f"FIRMS [{src}]: status={debug_info.get('status_code')} lines={debug_info.get('line_count')} invalid_key={debug_info.get('is_invalid_api_call')} first100={debug_info.get('first_100_chars','')[:80]}")
+            if not debug_info.get("is_invalid_api_call") and debug_info.get("line_count", 0) > 1:
+                logger.info(f"FIRMS key is VALID — data available from {src}")
+                break
+        else:
+            logger.warning("FIRMS key may be invalid or no data available right now for any source")
+        logger.info("================================")
+
+        # Step 2: Full classification pipeline
+        await classify_and_store(country="IND", days=1)
+
+    asyncio.create_task(_startup_pipeline())
 
 @app.on_event("shutdown")
 async def shutdown_event():
