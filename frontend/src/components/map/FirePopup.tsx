@@ -7,8 +7,10 @@ import {
 
 export function FirePopup({
   hotspot,
+  onClose,
 }: {
   hotspot: ClassifiedHotspot;
+  onClose?: () => void;
 }) {
   const c = hotspot?.classification || ({} as any);
   const f = hotspot?.hotspot || ({} as any);
@@ -43,6 +45,33 @@ export function FirePopup({
               {((Number(c?.confidence_score) || 0) * 100).toFixed(1)}% Confidence
             </span>
           </div>
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="p-1 ml-2 rounded bg-surface-container-highest hover:bg-error/20 text-on-surface-variant hover:text-error border border-outline-variant transition-all focus:outline-none cursor-pointer flex items-center justify-center shrink-0"
+              title="Close card"
+              aria-label="Close card"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="w-3.5 h-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
         </div>
 
         <div className="flex items-center space-x-2 mt-2">

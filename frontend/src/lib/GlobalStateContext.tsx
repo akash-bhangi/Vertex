@@ -390,34 +390,14 @@ export function GlobalStateProvider({
     ClassifiedHotspot | null
   >(null);
 
-
   const setSelectedHotspot = (
     hotspot: ClassifiedHotspot | null
   ) => {
-
-    setSelectedHotspotState(
-      hotspot
-    );
-
-
-    if (
-      typeof window !==
-      'undefined'
-    ) {
-
-      if (hotspot) {
-
-        localStorage.setItem(
-          'vtx_selectedHotspot',
-          hotspot.id
-        );
-
-      } else {
-
-        localStorage.removeItem(
-          'vtx_selectedHotspot'
-        );
-      }
+    setSelectedHotspotState(hotspot);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('vtx_selectedHotspot');
+      } catch {}
     }
   };
 
@@ -1100,57 +1080,21 @@ export function GlobalStateProvider({
 
         /*
          * ---------------------------------------------------
-         * 5. Restore selected hotspot
+         * 5. Synchronize active in-memory selection
          * ---------------------------------------------------
          */
 
-        if (
-          typeof window !==
-          'undefined'
-        ) {
-
-          const savedId =
-            localStorage.getItem(
-              'vtx_selectedHotspot'
-            );
-
-
-          if (savedId) {
-
-            const found =
-              mergedInitialMapData.find(
-                (
-                  hotspot
-                ) =>
-                  hotspot.id ===
-                  savedId
-              );
-
-
-            if (found) {
-
-              setSelectedHotspotState(
-                found
-              );
-
-            } else {
-
-              const fallback =
-                initialClassifiedData.find(
-                  (
-                    hotspot
-                  ) =>
-                    hotspot.id ===
-                    savedId
-                );
-
-
-              setSelectedHotspotState(
-                fallback || null
-              );
-            }
-          }
-        }
+        setSelectedHotspotState((prev) => {
+          if (!prev) return null;
+          const found = mergedInitialMapData.find(
+            (hotspot) => hotspot.id === prev.id
+          );
+          if (found) return found;
+          const fallback = initialClassifiedData.find(
+            (hotspot) => hotspot.id === prev.id
+          );
+          return fallback || prev;
+        });
 
 
         /*
@@ -1226,38 +1170,13 @@ export function GlobalStateProvider({
                * the newly enriched backend object.
                */
 
-              if (
-                typeof window !==
-                'undefined'
-              ) {
-
-                const savedId =
-                  localStorage.getItem(
-                    'vtx_selectedHotspot'
-                  );
-
-
-                if (savedId) {
-
-                  const found =
-                    mergedEnrichedMapData.find(
-                      (
-                        hotspot
-                      ) =>
-                        hotspot.id ===
-                        savedId
-                    );
-
-
-                  if (found) {
-
-                    setSelectedHotspotState(
-                      found
-                    );
-
-                  }
-                }
-              }
+              setSelectedHotspotState((prev) => {
+                if (!prev) return null;
+                const found = mergedEnrichedMapData.find(
+                  (hotspot) => hotspot.id === prev.id
+                );
+                return found || prev;
+              });
 
             }
           )
@@ -1346,37 +1265,16 @@ export function GlobalStateProvider({
 
 
         /*
-         * Restore demo selection.
+         * Keep demo selection in sync if active
          */
 
-        if (
-          typeof window !==
-          'undefined'
-        ) {
-
-          const savedId =
-            localStorage.getItem(
-              'vtx_selectedHotspot'
-            );
-
-
-          if (savedId) {
-
-            const found =
-              DEMO_HOTSPOTS.find(
-                (
-                  hotspot
-                ) =>
-                  hotspot.id ===
-                  savedId
-              );
-
-
-            setSelectedHotspotState(
-              found || null
-            );
-          }
-        }
+        setSelectedHotspotState((prev) => {
+          if (!prev) return null;
+          const found = DEMO_HOTSPOTS.find(
+            (hotspot) => hotspot.id === prev.id
+          );
+          return found || null;
+        });
 
       } finally {
 

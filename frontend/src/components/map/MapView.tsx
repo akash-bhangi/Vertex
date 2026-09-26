@@ -61,9 +61,14 @@ export function MapView({
 
   const onMove = useCallback((event: ViewStateChangeEvent) => setViewState(event.viewState), []);
 
-  const selectedLongitude = Number(selectedHotspot?.hotspot?.longitude);
-  const selectedLatitude = Number(selectedHotspot?.hotspot?.latitude);
-  const hasValidSelectedCoordinates = Number.isFinite(selectedLongitude) && Number.isFinite(selectedLatitude);
+  const selectedLongitude = Number(
+    selectedHotspot?.hotspot?.longitude ?? (selectedHotspot as any)?.longitude
+  );
+  const selectedLatitude = Number(
+    selectedHotspot?.hotspot?.latitude ?? (selectedHotspot as any)?.latitude
+  );
+  const hasValidSelectedCoordinates =
+    Number.isFinite(selectedLongitude) && Number.isFinite(selectedLatitude);
   const selectedIdStr = String(selectedHotspot?.id ?? '');
   const selectedIdRaw = selectedIdStr.replace(/^vtx-/i, '');
 
@@ -313,11 +318,16 @@ export function MapView({
             longitude={selectedLongitude}
             latitude={selectedLatitude}
             anchor="bottom"
+            offset={12}
             onClose={() => onSelectHotspot?.(null)}
             closeOnClick={false}
+            closeButton={false}
             className="vertex-popup"
           >
-            <FirePopup hotspot={selectedHotspot} />
+            <FirePopup
+              hotspot={selectedHotspot}
+              onClose={() => onSelectHotspot?.(null)}
+            />
           </Popup>
         )}
       </Map>
