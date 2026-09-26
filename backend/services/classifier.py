@@ -479,7 +479,7 @@ async def classify_and_store(country: str = 'IND', days: int = 1) -> List[Classi
             
     # 3. Priority Selection
     unclassified_candidates.sort(key=lambda x: x.frp or 0.0, reverse=True)
-    limit = getattr(settings, 'AI_CLASSIFICATION_LIMIT', 50)
+    limit = getattr(settings, 'AI_CLASSIFICATION_LIMIT', 5000)
     selected_for_ai = unclassified_candidates[:limit]
     remaining = len(unclassified_candidates) - len(selected_for_ai)
     

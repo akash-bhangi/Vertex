@@ -156,9 +156,9 @@ async def repopulate_fresh(days: int = 1):
 
     # Sort by FRP for classification priority
     inserted_hotspots.sort(key=lambda x: x.frp or 0.0, reverse=True)
-    top_candidates = inserted_hotspots[:50]
+    top_candidates = inserted_hotspots
     
-    print(f"\nStep 4: Classifying top {len(top_candidates)} priority thermal events...")
+    print(f"\nStep 4: Classifying all {len(top_candidates)} thermal events...")
     print("  (Using fixed rules: Wildfire >= 15 MW, true facility proximity, forest/wood detection, Gemini 3.5 Flash Lite)")
     
     classified = await classify_hotspots(top_candidates)
@@ -210,8 +210,8 @@ async def backfill_existing():
     
     if matched_for_reclass:
         matched_for_reclass.sort(key=lambda x: x.frp or 0.0, reverse=True)
-        top_to_reclass = matched_for_reclass[:50]
-        print(f"Reclassifying top {len(top_to_reclass)} matched hotspots...")
+        top_to_reclass = matched_for_reclass
+        print(f"Reclassifying all {len(top_to_reclass)} matched hotspots...")
         reclassified = await classify_hotspots(top_to_reclass)
         for c in reclassified:
             persist_classification(c)
